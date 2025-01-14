@@ -325,18 +325,20 @@ const ChatUI = () => {
     <TooltipProvider>
       <div className="flex flex-col h-[100dvh] relative">
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-50">
-          <div className="p-4">
-            <div className="flex items-center justify-between max-w-full mx-auto">
-              <div className="flex items-center gap-2 pl-4">
-                <Sparkles className="h-6 w-6 text-black" />
-                <h1 className="text-left pl-2 text-black font-semibold">
-                  AI Assistant
-                </h1>
+        {messages.length < 1 && (
+          <div className="absolute top-0 left-0 right-0 z-50">
+            <div className="p-4">
+              <div className="flex items-center justify-between max-w-full mx-auto">
+                <div className="flex items-center gap-2 pl-4">
+                  <Sparkles className="h-6 w-6 text-black" />
+                  <h1 className="text-left pl-2 text-black font-semibold">
+                    AI Assistant
+                  </h1>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Error Alert */}
         {error && (
@@ -368,50 +370,51 @@ const ChatUI = () => {
                     <PricingCards />
                   ) : (
                     <div className="flex flex-col space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">
-                          {message.role === "assistant"
-                            ? "AI Assistant"
-                            : "You"}
-                        </span>
-                        
-                        {message.files && message.files.length > 0 && (
-                          <div className="flex flex-1 justify-center flex-wrap gap-2">
-                            {message.files.map((file) => (
-                              <div
-                                key={file.name}
-                                className="flex items-center gap-2 font bg-white rounded-lg p-1 border-white border-2"
-                              >
-                                <File className="h-3 w-3 text-black" />
-                                <span className="text-xs text-black">
-                                  {file.name}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      {messages.length <= 2 && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">
+                            {message.role === "assistant"
+                              ? "AI Assistant"
+                              : "You"}
+                          </span>
 
-                        {message.role === "user" && !message.isPricing && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 hover:bg-white/10 text-white hover:text-white"
-                                onClick={() =>
-                                  handleEditMessage(message.content)
-                                }
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Edit message</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
+                          {message.files && message.files.length > 0 && (
+                            <div className="flex flex-1 justify-center flex-wrap gap-2">
+                              {message.files.map((file) => (
+                                <div
+                                  key={file.name}
+                                  className="flex items-center gap-2 font bg-white rounded-lg p-1 border-white border-2"
+                                >
+                                  <File className="h-3 w-3 text-black" />
+                                  <span className="text-xs text-black">
+                                    {file.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
+                          {message.role === "user" && !message.isPricing && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 hover:bg-white/10 text-white hover:text-white"
+                                  onClick={() =>
+                                    handleEditMessage(message.content)
+                                  }
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Edit message</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      )}
                       <div
                         className={cn(
                           "prose max-w-none text-sm",
