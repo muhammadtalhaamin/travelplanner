@@ -58,6 +58,7 @@ const ChatUI = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sessionId, setSessionId] = useState<string>("");
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -66,8 +67,12 @@ const ChatUI = () => {
   }, []);
 
   useEffect(() => {
-    console.log("Triggered");
+    setSessionId(
+      `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    );
+  }, []);
 
+  useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (lastMessage?.isPricing) {
       toast.error("You've run out of credits", {
@@ -159,6 +164,7 @@ const ChatUI = () => {
     if ((!messageContent.trim() && selectedFiles.length === 0) || isStreaming)
       return;
 
+    // Credits check
     if (credits <= 0) {
       const lastMessage = messages[messages.length - 1];
       if (!lastMessage?.isPricing) {
@@ -177,6 +183,7 @@ const ChatUI = () => {
 
     setCredits((prev) => prev - 1);
 
+    // Create user message for UI
     const newMessageId = `msg-${Date.now()}`;
     const userMessage = {
       role: "user" as const,
@@ -185,6 +192,7 @@ const ChatUI = () => {
       files: selectedFiles,
     };
 
+    // Update UI immediately
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setSelectedFiles([]);
@@ -194,21 +202,26 @@ const ChatUI = () => {
 
     try {
       setIsStreaming(true);
+
+      // Prepare form data
+      const formData = new FormData();
+      formData.append("message", messageContent);
+      formData.append("sessionId", sessionId);
+      selectedFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      // Make API request
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: messageContent,
-          files: selectedFiles,
-        }),
+        body: formData,
       });
 
       if (!response.ok || !response.body) {
         throw new Error("Failed to get response");
       }
 
+      // Create assistant message placeholder
       const assistantMessageId = `assistant-${Date.now()}`;
       setMessages((prev) => [
         ...prev,
@@ -220,6 +233,7 @@ const ChatUI = () => {
         },
       ]);
 
+      // Handle streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantMessage = "";
@@ -266,6 +280,9 @@ const ChatUI = () => {
         },
       ]);
       setIsStreaming(false);
+      toast.error("Failed to process message", {
+        description: "Please try again",
+      });
     }
   };
 
@@ -509,7 +526,7 @@ const ChatUI = () => {
                 onChange={handleFileUpload}
                 className="hidden"
                 multiple
-                accept="*/*"
+                accept=".pdf,.csv,.txt"
               />
 
               <Tooltip>

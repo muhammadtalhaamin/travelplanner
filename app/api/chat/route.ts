@@ -1,58 +1,127 @@
-import OpenAI from "openai";
+import { NextResponse } from "next/server";
+import { ChatOpenAI } from "@langchain/openai";
+import { TextLoader } from "langchain/document_loaders/fs/text";
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { CSVLoader } from "@langchain/community/document_loaders/fs/csv";
+import { Document } from "@langchain/core/documents";
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
+import { BufferMemory } from "langchain/memory";
+import { ConversationChain } from "langchain/chains";
+import { ChatMessageHistory } from "@langchain/community/stores/message/in_memory";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+const chatSessions = new Map<string, ChatMessageHistory>();
 
 export async function POST(req: Request) {
   try {
-    // Get the request body
-    const { message } = await req.json();
+    const formData = await req.formData();
+    const message = formData.get("message") as string;
+    const sessionId = formData.get("sessionId") as string;
+    const files = formData.getAll("files") as File[];
 
-    // Create the messages array for OpenAI
-    const messages = [
-      {
-        role: "system",
-        content:
-          "You are a wise and supportive assistant who combines warmth and professionalism to provide thoughtful, empathetic guidance while maintaining appropriate boundaries and encouraging positive outcomes.",
-      },
-      {
-        role: "user",
-        content: message,
-      },
-    ];
+    if (!chatSessions.has(sessionId)) {
+      chatSessions.set(sessionId, new ChatMessageHistory());
+    }
+    const chatHistory = chatSessions.get(sessionId)!;
 
-    // Create the stream
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: messages,
-      stream: true,
+    const memory = new BufferMemory({
+      chatHistory: chatHistory,
+      returnMessages: true,
+      memoryKey: "history",
     });
 
-    // Create a new ReadableStream
+    // Process files and extract content
+    let fileContents = "";
+
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const buffer = await file.arrayBuffer();
+        const fileName = file.name.toLowerCase();
+
+        try {
+          let content = "";
+          if (fileName.endsWith(".txt")) {
+            const text = new TextDecoder().decode(buffer);
+            content = `Content from ${fileName}:\n${text}\n\n`;
+          } else if (fileName.endsWith(".pdf")) {
+            const loader = new PDFLoader(
+              new Blob([buffer], { type: "application/pdf" }),
+              {
+                splitPages: false,
+              }
+            );
+            const docs = await loader.load();
+            content = `Content from ${fileName}:\n${docs
+              .map((doc) => doc.pageContent)
+              .join("\n")}\n\n`;
+          } else if (fileName.endsWith(".csv")) {
+            const text = new TextDecoder().decode(buffer);
+            const loader = new CSVLoader(
+              new Blob([text], { type: "text/csv" })
+            );
+            const docs = await loader.load();
+            content = `Content from ${fileName}:\n${docs
+              .map((doc) => doc.pageContent)
+              .join("\n")}\n\n`;
+          }
+          fileContents += content;
+        } catch (error) {
+          console.error(`Error processing file ${fileName}:`, error);
+          throw new Error(`Failed to process file ${fileName}`);
+        }
+      }
+    }
+
+    // Construct the full message
+    let fullMessage = message;
+    if (fileContents) {
+      fullMessage = `User Question: ${message}\n\n${fileContents}\n\nPlease analyze the above content and respond to the user's question.`;
+    }
+
+    // Initialize chat model
+    const model = new ChatOpenAI({
+      modelName: "gpt-4",
+      streaming: true,
+      temperature: 0.7,
+    });
+
+    // Create conversation chain
+    const chain = new ConversationChain({
+      llm: model,
+      memory: memory,
+    });
+
+    // Create readable stream for response
     const readableStream = new ReadableStream({
       async start(controller) {
         try {
-          // Process each chunk from OpenAI
-          for await (const chunk of stream) {
-            const content = chunk.choices[0]?.delta?.content || "";
-            // Format the data as your frontend expects
-            const data = JSON.stringify({ content });
-            controller.enqueue(`data: ${data}\n\n`);
-          }
-          // Send the [DONE] message
+          const response = await chain.call(
+            { input: fullMessage },
+            {
+              callbacks: [
+                {
+                  handleLLMNewToken(token: string) {
+                    const data = JSON.stringify({ content: token });
+                    controller.enqueue(`data: ${data}\n\n`);
+                  },
+                },
+              ],
+            }
+          );
+
+          await chatHistory.addMessage(new HumanMessage(fullMessage));
+          await chatHistory.addMessage(new AIMessage(response.response));
+
           controller.enqueue(
             `data: ${JSON.stringify({ content: "[DONE]" })}\n\n`
           );
           controller.close();
         } catch (error) {
+          console.error("Streaming error:", error);
           controller.error(error);
         }
       },
     });
 
-    // Return the streaming response
     return new Response(readableStream, {
       headers: {
         "Content-Type": "text/event-stream",
@@ -62,14 +131,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Error in chat route:", error);
-    return new Response(
-      JSON.stringify({ error: "Error generating response" }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+    return NextResponse.json(
+      { error: "An error occurred while processing your request" },
+      { status: 500 }
     );
   }
 }
