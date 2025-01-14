@@ -28,6 +28,8 @@ import {
   File,
   PencilIcon,
   RotateCw,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import QuickStartCards from "@/components/QuickStartCards";
@@ -35,6 +37,8 @@ import PricingCards from "@/components/PricingCards";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Highlight, themes } from "prism-react-renderer";
+import { useTheme } from "next-themes";
+import ThemeToggleHeader from "@/components/ThemeToggleHeader";
 
 interface MessageFeedback {
   liked: boolean;
@@ -65,6 +69,11 @@ const ChatUI = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sessionId, setSessionId] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleUpgradeClick = () => {
     toast.info("The upgrade feature will be available shortly.");
@@ -324,24 +333,15 @@ const ChatUI = () => {
     }
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-[100dvh] relative">
+      <div className="flex flex-col h-[100dvh] relative dark:bg-black">
         {/* Header */}
-        {messages.length < 1 && (
-          <div className="absolute top-0 left-0 right-0 z-50">
-            <div className="p-4">
-              <div className="flex items-center justify-between max-w-full mx-auto">
-                <div className="flex items-center gap-2 pl-4">
-                  <Sparkles className="h-6 w-6 text-black" />
-                  <h1 className="text-left pl-2 text-black font-semibold">
-                    AI Assistant
-                  </h1>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {messages.length < 1 && mounted && <ThemeToggleHeader />}
 
         {/* Error Alert */}
         {error && (
@@ -374,7 +374,13 @@ const ChatUI = () => {
                   ) : (
                     <div className="flex flex-col space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">
+                        <span
+                          className={`text-sm font-bold ${
+                            message.role === "assistant"
+                              ? "text-black"
+                              : "text-white"
+                          }`}
+                        >
                           {message.role === "assistant"
                             ? "AI Assistant"
                             : "You"}
@@ -577,17 +583,19 @@ const ChatUI = () => {
         </ScrollArea>
 
         {/* Credits Counter and File Preview */}
-        <div className="bg-white p-1">
+        <div className="bg-white dark:bg-black p-1">
           <div className="max-w-3xl mx-auto flex justify-between items-center">
             <div className="flex flex-wrap gap-2">
               {selectedFiles.length > 0 &&
                 selectedFiles.map((file) => (
                   <div
                     key={file.name}
-                    className="md:ml-[34px] flex items-center gap-2 bg-black/5 rounded p-1.5"
+                    className="md:ml-[34px] flex items-center gap-2 bg-black/10 dark:bg-white/10 rounded p-1.5"
                   >
-                    <File className="h-3 w-3 text-black" />
-                    <span className="text-xs text-black">{file.name}</span>
+                    <File className="h-3 w-3 text-black dark:text-white" />
+                    <span className="text-xs text-black dark:text-white">
+                      {file.name}
+                    </span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -611,8 +619,10 @@ const ChatUI = () => {
                       variant="outline"
                       className="flex items-center gap-2 cursor-pointer p-2"
                     >
-                      <Coins className="h-4 w-4 text-gray-600" />
-                      <span className="text-gray-600">{credits} credits</span>
+                      <Coins className="h-4 w-4 text-gray-600 dark:text-white" />
+                      <span className="text-gray-600 dark:text-white">
+                        {credits} credits
+                      </span>
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -621,7 +631,7 @@ const ChatUI = () => {
                       <a
                         href="#"
                         onClick={handleUpgradeClick}
-                        className="font-bold text-white underline"
+                        className="font-bold text-white underline dark:text-black"
                       >
                         <b>Upgrade</b>
                       </a>
@@ -634,7 +644,7 @@ const ChatUI = () => {
         </div>
 
         {/* Input Area */}
-        <div className="bg-white p-4 border-black/10">
+        <div className="bg-white p-4 border-black/10 dark:bg-black">
           <form
             onSubmit={(e) => {
               e.preventDefault();

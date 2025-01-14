@@ -46,10 +46,12 @@ const QuickStartCards: React.FC<QuickStartCardsProps> = ({
         <button
           key={index}
           onClick={() => onQuestionSelect(item.question)}
-          className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col items-center text-center space-y-3 border border-black/10"
+          className="bg-white dark:bg-black p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col items-center text-center space-y-3 border border-black/10 dark:border-white/10"
         >
-          <div className="text-black">{item.icon}</div>
-          <span className="text-sm text-black">{item.text}</span>
+          <div className="text-black dark:text-white">{item.icon}</div>
+          <span className="text-sm text-black dark:text-white">
+            {item.text}
+          </span>
         </button>
       ))}
     </div>
