@@ -8,20 +8,14 @@ const plans = [
   {
     name: "Basic",
     price: "$4.99",
-    credits: "50",
-    features: [
-      "100 Credits per session",
-      "Profile review",
-      "Quick responses",
-      "24/7 availability",
-    ],
+    credits: "100",
+    features: ["Profile review", "Quick responses", "24/7 availability"],
   },
   {
     name: "Premium",
     price: "$9.99",
-    credits: "120",
+    credits: "300",
     features: [
-      "300 Credits per session",
       "Priority support",
       "Advanced assistance",
       "Detailed explanations",
@@ -35,7 +29,7 @@ const PricingCards = () => {
     <div className="w-full">
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-black mb-2">
-          Continue your Brainstorm
+          Get the Most out of our AI Agent
         </h2>
         <p className="text-black/60">
           Choose a plan to keep your conversations going

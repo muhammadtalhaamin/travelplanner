@@ -76,7 +76,15 @@ const ChatUI = () => {
   }, []);
 
   const handleUpgradeClick = () => {
-    toast.info("The upgrade feature will be available shortly.");
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: "",
+        id: `pricing-${Date.now()}`,
+        isPricing: true,
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -93,7 +101,7 @@ const ChatUI = () => {
 
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage?.isPricing) {
+    if (lastMessage?.isPricing && credits <= 0) {
       toast.error("You've run out of credits", {
         description: "Please upgrade to continue chatting",
         duration: 5000,
