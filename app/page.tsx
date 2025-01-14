@@ -341,6 +341,233 @@ const ChatUI = () => {
     }
   };
 
+  const renderMessages = () => {
+    if (messages.length === 0) {
+      return (
+        <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
+          <QuickStartCards onQuestionSelect={handleQuestionSelect} />
+        </div>
+      );
+    }
+
+    // Check if there's only one message and it's a pricing message
+    const isOnlyPricingMessage = messages.length === 1 && messages[0].isPricing;
+
+    if (isOnlyPricingMessage) {
+      return (
+        <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
+          <div className="w-full max-w-3xl">
+            <Card className="p-4 border border-black/10 bg-white w-full">
+              <PricingCards />
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // Regular message display for all other cases
+    return (
+      <div className="space-y-6">
+        {messages.map((message) => (
+          <Card
+            key={message.id}
+            className={cn(
+              "p-4 border border-black/10",
+              message.role === "assistant" ? "bg-white" : "bg-black text-white"
+            )}
+          >
+            {message.isPricing ? (
+              <PricingCards />
+            ) : (
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`text-sm font-bold ${
+                      message.role === "assistant" ? "text-black" : "text-white"
+                    }`}
+                  >
+                    {message.role === "assistant" ? "AI Assistant" : "You"}
+                  </span>
+
+                  {message.files && message.files.length > 0 && (
+                    <div className="flex flex-1 justify-center flex-wrap gap-2">
+                      {message.files.map((file) => (
+                        <div
+                          key={file.name}
+                          className="flex items-center gap-2 font bg-white rounded-lg p-1 border-white border-2"
+                        >
+                          <File className="h-3 w-3 text-black" />
+                          <span className="text-xs text-black">
+                            {file.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {message.role === "user" && !message.isPricing && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 hover:bg-white/10 text-white hover:text-white"
+                          onClick={() => handleEditMessage(message.content)}
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Edit message</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  className={cn(
+                    "prose prose-sm max-w-none break-words",
+                    message.role === "assistant" ? "text-black" : "text-white"
+                  )}
+                  components={{
+                    code({ node, inline, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || "");
+                      const language = match ? match[1] : "text";
+                      return !inline && match ? (
+                        <Highlight
+                          theme={
+                            message.role === "assistant"
+                              ? themes.github
+                              : themes.dracula
+                          }
+                          code={String(children).replace(/\n$/, "")}
+                          language={language}
+                        >
+                          {({
+                            className,
+                            style,
+                            tokens,
+                            getLineProps,
+                            getTokenProps,
+                          }) => (
+                            <pre
+                              className={className}
+                              style={{
+                                ...style,
+                                backgroundColor: "transparent",
+                                padding: "1rem",
+                                margin: "0.5rem 0",
+                                borderRadius: "0.375rem",
+                              }}
+                            >
+                              {tokens.map((line, i) => (
+                                <div key={i} {...getLineProps({ line })}>
+                                  {line.map((token, key) => (
+                                    <span
+                                      key={key}
+                                      {...getTokenProps({ token })}
+                                    />
+                                  ))}
+                                </div>
+                              ))}
+                            </pre>
+                          )}
+                        </Highlight>
+                      ) : (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+
+                {message.role === "assistant" && !message.isPricing && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-8 w-8 hover:bg-black/5",
+                            message.feedback?.liked
+                              ? "bg-black text-white"
+                              : "text-black"
+                          )}
+                          onClick={() => handleFeedback(message.id, "like")}
+                        >
+                          <ThumbsUp className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Good response</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-8 w-8 hover:bg-black/5",
+                            message.feedback?.disliked
+                              ? "bg-black text-white"
+                              : "text-black"
+                          )}
+                          onClick={() => handleFeedback(message.id, "dislike")}
+                        >
+                          <ThumbsDown className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Bad response</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-8 w-8 hover:bg-black/5",
+                            copiedMessageId === message.id
+                              ? "bg-black text-white"
+                              : "text-black"
+                          )}
+                          onClick={() =>
+                            copyToClipboard(message.content, message.id)
+                          }
+                        >
+                          {copiedMessageId === message.id ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          {copiedMessageId === message.id
+                            ? "Copied!"
+                            : "Copy message"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
   if (!mounted) {
     return null;
   }
@@ -361,231 +588,7 @@ const ChatUI = () => {
         {/* Chat Area */}
         <ScrollArea className="flex-1 p-4 flex items-center justify-center">
           <div className="max-w-3xl w-full mx-auto">
-            {messages.length === 0 && (
-              <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
-                <QuickStartCards onQuestionSelect={handleQuestionSelect} />
-              </div>
-            )}
-            <div className="space-y-6">
-              {messages.map((message) => (
-                <Card
-                  key={message.id}
-                  className={cn(
-                    "p-4 border border-black/10",
-                    message.role === "assistant"
-                      ? "bg-white"
-                      : "bg-black text-white"
-                  )}
-                >
-                  {message.isPricing ? (
-                    <PricingCards />
-                  ) : (
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`text-sm font-bold ${
-                            message.role === "assistant"
-                              ? "text-black"
-                              : "text-white"
-                          }`}
-                        >
-                          {message.role === "assistant"
-                            ? "AI Assistant"
-                            : "You"}
-                        </span>
-
-                        {message.files && message.files.length > 0 && (
-                          <div className="flex flex-1 justify-center flex-wrap gap-2">
-                            {message.files.map((file) => (
-                              <div
-                                key={file.name}
-                                className="flex items-center gap-2 font bg-white rounded-lg p-1 border-white border-2"
-                              >
-                                <File className="h-3 w-3 text-black" />
-                                <span className="text-xs text-black">
-                                  {file.name}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {message.role === "user" && !message.isPricing && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 hover:bg-white/10 text-white hover:text-white"
-                                onClick={() =>
-                                  handleEditMessage(message.content)
-                                }
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Edit message</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        className={cn(
-                          "prose prose-sm max-w-none break-words",
-                          message.role === "assistant"
-                            ? "text-black"
-                            : "text-white"
-                        )}
-                        components={{
-                          code({
-                            node,
-                            inline,
-                            className,
-                            children,
-                            ...props
-                          }) {
-                            const match = /language-(\w+)/.exec(
-                              className || ""
-                            );
-                            const language = match ? match[1] : "text";
-                            return !inline && match ? (
-                              <Highlight
-                                theme={
-                                  message.role === "assistant"
-                                    ? themes.github
-                                    : themes.dracula
-                                }
-                                code={String(children).replace(/\n$/, "")}
-                                language={language}
-                              >
-                                {({
-                                  className,
-                                  style,
-                                  tokens,
-                                  getLineProps,
-                                  getTokenProps,
-                                }) => (
-                                  <pre
-                                    className={className}
-                                    style={{
-                                      ...style,
-                                      backgroundColor: "transparent",
-                                      padding: "1rem",
-                                      margin: "0.5rem 0",
-                                      borderRadius: "0.375rem",
-                                    }}
-                                  >
-                                    {tokens.map((line, i) => (
-                                      <div key={i} {...getLineProps({ line })}>
-                                        {line.map((token, key) => (
-                                          <span
-                                            key={key}
-                                            {...getTokenProps({ token })}
-                                          />
-                                        ))}
-                                      </div>
-                                    ))}
-                                  </pre>
-                                )}
-                              </Highlight>
-                            ) : (
-                              <code className={className} {...props}>
-                                {children}
-                              </code>
-                            );
-                          },
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-
-                      {message.role === "assistant" && !message.isPricing && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                  "h-8 w-8 hover:bg-black/5",
-                                  message.feedback?.liked
-                                    ? "bg-black text-white"
-                                    : "text-black"
-                                )}
-                                onClick={() =>
-                                  handleFeedback(message.id, "like")
-                                }
-                              >
-                                <ThumbsUp className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Good response</p>
-                            </TooltipContent>
-                          </Tooltip>
-
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                  "h-8 w-8 hover:bg-black/5",
-                                  message.feedback?.disliked
-                                    ? "bg-black text-white"
-                                    : "text-black"
-                                )}
-                                onClick={() =>
-                                  handleFeedback(message.id, "dislike")
-                                }
-                              >
-                                <ThumbsDown className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Bad response</p>
-                            </TooltipContent>
-                          </Tooltip>
-
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                  "h-8 w-8 hover:bg-black/5",
-                                  copiedMessageId === message.id
-                                    ? "bg-black text-white"
-                                    : "text-black"
-                                )}
-                                onClick={() =>
-                                  copyToClipboard(message.content, message.id)
-                                }
-                              >
-                                {copiedMessageId === message.id ? (
-                                  <Check className="h-4 w-4" />
-                                ) : (
-                                  <Copy className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>
-                                {copiedMessageId === message.id
-                                  ? "Copied!"
-                                  : "Copy message"}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
+            {renderMessages()}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>

@@ -42,21 +42,23 @@ const PricingCards = () => {
             key={plan.name}
             className="p-6 flex flex-col border-black/10 hover:shadow-md transition-shadow"
           >
-            <h3 className="text-xl font-bold text-black mb-2">{plan.name}</h3>
+            <h3 className="text-xl font-bold text-black mb-2 dark:text-white">
+              {plan.name}
+            </h3>
             <div className="mb-4">
-              <span className="text-3xl font-bold text-black">
+              <span className="text-3xl font-bold text-black dark:text-white">
                 {plan.price}
               </span>
-              <span className="text-black/60"> /month</span>
+              <span className="text-black/60 dark:text-white/60"> /month</span>
             </div>
-            <p className="text-sm text-black/60 mb-4">
+            <p className="text-sm text-black/60 dark:text-white/60 mb-4">
               {plan.credits} credits included
             </p>
             <ul className="space-y-2 mb-6 flex-grow">
               {plan.features.map((feature) => (
                 <li key={feature} className="flex items-center gap-2 text-sm">
-                  <Check className="h-4 w-4 text-black" />
-                  <span className="text-black">{feature}</span>
+                  <Check className="h-4 w-4 text-black dark:text-white" />
+                  <span className="text-black dark:text-white">{feature}</span>
                 </li>
               ))}
             </ul>
