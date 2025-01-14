@@ -11,7 +11,7 @@ const plans = [
     features: [
       "50 AI conversations",
       "Profile review",
-      "Message suggestions",
+      "Quick responses",
       "24/7 availability",
     ],
   },
@@ -22,9 +22,9 @@ const plans = [
     features: [
       "120 AI conversations",
       "Priority support",
-      "Advanced dating strategies",
-      "Personalized advice",
-      "Unlimited profile reviews",
+      "Advanced assistance",
+      "Detailed explanations",
+      "Enhanced file analysis",
     ],
   },
 ];
@@ -49,7 +49,9 @@ const PricingCards = () => {
           >
             <h3 className="text-xl font-bold text-black mb-2">{plan.name}</h3>
             <div className="mb-4">
-              <span className="text-3xl font-bold text-black">{plan.price}</span>
+              <span className="text-3xl font-bold text-black">
+                {plan.price}
+              </span>
               <span className="text-black/60"> /month</span>
             </div>
             <p className="text-sm text-black/60 mb-4">

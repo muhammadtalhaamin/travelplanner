@@ -21,24 +21,27 @@ import {
   RotateCcw,
   Coins,
   Check,
+  Upload,
+  X,
+  File,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import QuickStartCards from "@/components/QuickStartCards";
 import PricingCards from "@/components/PricingCards";
+import { toast } from "sonner";
 
-// Type for message feedback
 interface MessageFeedback {
   liked: boolean;
   disliked: boolean;
 }
 
-// Extended message type with feedback
 interface Message {
   role: "assistant" | "user";
   content: string;
   id: string;
   isPricing?: boolean;
   feedback?: MessageFeedback;
+  files?: File[];
 }
 
 const ChatUI = () => {
@@ -51,14 +54,49 @@ const ChatUI = () => {
   const [error, setError] = useState<string | null>(null);
   const [credits, setCredits] = useState(5);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus effect for textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
+  }, []);
+
+  useEffect(() => {
+    console.log("Triggered");
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.isPricing) {
+      toast.error("You've run out of credits", {
+        description: "Please upgrade to continue chatting",
+        duration: 5000,
+      });
+    }
+  }, [messages]);
+
+  const handleWindowKeyPress = (e: KeyboardEvent) => {
+    if (
+      document.activeElement !== textareaRef.current &&
+      e.key.length === 1 &&
+      !e.ctrlKey &&
+      !e.altKey &&
+      !e.metaKey
+    ) {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        setInput((prev) => prev + e.key);
+      }
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keypress", handleWindowKeyPress);
+    return () => {
+      window.removeEventListener("keypress", handleWindowKeyPress);
+    };
   }, []);
 
   const scrollToBottom = () => {
@@ -76,7 +114,6 @@ const ChatUI = () => {
     }
   }, [input]);
 
-  // Function to handle feedback
   const handleFeedback = (messageId: string, type: "like" | "dislike") => {
     setMessages((prev) =>
       prev.map((message) => {
@@ -93,15 +130,23 @@ const ChatUI = () => {
         return message;
       })
     );
+  };
 
-    // Placeholder for feedback API call
-    const feedbackData = {
-      messageId,
-      type,
-      timestamp: new Date().toISOString(),
-    };
-    console.log("Feedback data to be sent to API:", feedbackData);
-    // TODO: Implement API call to save feedback
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const totalSize = files.reduce((acc, file) => acc + file.size, 0);
+
+    if (totalSize > 25 * 1024 * 1024) {
+      setError("Total file size exceeds 25MB limit");
+      return;
+    }
+
+    setSelectedFiles((prev) => [...prev, ...files]);
+    setError(null);
+  };
+
+  const removeFile = (fileName: string) => {
+    setSelectedFiles((prev) => prev.filter((file) => file.name !== fileName));
   };
 
   const handleQuestionSelect = (question: string) => {
@@ -111,11 +156,10 @@ const ChatUI = () => {
 
   const handleFormSubmit = async (selectedQuestion?: string) => {
     const messageContent = selectedQuestion || input;
-    if (!messageContent.trim()) return;
+    if ((!messageContent.trim() && selectedFiles.length === 0) || isStreaming)
+      return;
 
-    // Check credits and show pricing if 0
     if (credits <= 0) {
-      // Only add pricing card if the last message isn't already a pricing card
       const lastMessage = messages[messages.length - 1];
       if (!lastMessage?.isPricing) {
         setMessages((prev) => [
@@ -131,21 +175,25 @@ const ChatUI = () => {
       return;
     }
 
-    // Deduct credit
     setCredits((prev) => prev - 1);
 
-    // Create user message
     const newMessageId = `msg-${Date.now()}`;
     const userMessage = {
       role: "user" as const,
       content: messageContent,
       id: newMessageId,
+      files: selectedFiles,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
     try {
+      setIsStreaming(true);
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -153,6 +201,7 @@ const ChatUI = () => {
         },
         body: JSON.stringify({
           message: messageContent,
+          files: selectedFiles,
         }),
       });
 
@@ -160,7 +209,6 @@ const ChatUI = () => {
         throw new Error("Failed to get response");
       }
 
-      // Create a new message for the assistant's response
       const assistantMessageId = `assistant-${Date.now()}`;
       setMessages((prev) => [
         ...prev,
@@ -172,7 +220,6 @@ const ChatUI = () => {
         },
       ]);
 
-      // Set up SSE
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantMessage = "";
@@ -189,11 +236,7 @@ const ChatUI = () => {
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6));
-
-                if (data.content === "[DONE]") {
-                  continue;
-                }
-
+                if (data.content === "[DONE]") continue;
                 assistantMessage += data.content;
                 setMessages((prev) =>
                   prev.map((msg) =>
@@ -208,9 +251,8 @@ const ChatUI = () => {
             }
           }
         }
-      } catch (error) {
-        console.error("Error reading stream:", error);
-        throw error;
+      } finally {
+        setIsStreaming(false);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -223,13 +265,14 @@ const ChatUI = () => {
           feedback: { liked: false, disliked: false },
         },
       ]);
+      setIsStreaming(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (input.trim()) {
+      if (input.trim() || selectedFiles.length > 0) {
         handleFormSubmit();
       }
     }
@@ -239,7 +282,6 @@ const ChatUI = () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
-      // Reset the copied state after 2 seconds
       setTimeout(() => {
         setCopiedMessageId(null);
       }, 2000);
@@ -247,40 +289,6 @@ const ChatUI = () => {
       setError("Failed to copy to clipboard");
     }
   };
-
-  const clearConversation = () => {
-    setMessages([]);
-    setInput("");
-    setError(null);
-    setIsStreaming(false);
-    setStreamingMessageId(null);
-    setCredits(5);
-    setCopiedMessageId(null);
-  };
-
-  // Function to handle any keypress on the window
-  const handleWindowKeyPress = (e: KeyboardEvent) => {
-    if (
-      document.activeElement !== textareaRef.current &&
-      e.key.length === 1 && // Only single characters
-      !e.ctrlKey &&
-      !e.altKey &&
-      !e.metaKey // No modifier keys
-    ) {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        setInput((prev) => prev + e.key);
-      }
-    }
-  };
-
-  // Add window keypress listener
-  useEffect(() => {
-    window.addEventListener("keypress", handleWindowKeyPress);
-    return () => {
-      window.removeEventListener("keypress", handleWindowKeyPress);
-    };
-  }, []);
 
   return (
     <TooltipProvider>
@@ -291,7 +299,7 @@ const ChatUI = () => {
             <div className="flex items-center gap-2 pl-4">
               <Sparkles className="h-6 w-6 text-black" />
               <h1 className="text-left pl-2 text-black font-semibold">
-                AI Dating Assistant
+                AI Assistant
               </h1>
             </div>
           </div>
@@ -335,6 +343,20 @@ const ChatUI = () => {
                         </span>
                       </div>
 
+                      {message.files && message.files.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {message.files.map((file) => (
+                            <div
+                              key={file.name}
+                              className="flex items-center gap-2 bg-black/5 rounded p-2"
+                            >
+                              <File className="h-4 w-4" />
+                              <span className="text-sm">{file.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <div
                         className={cn(
                           "prose max-w-none text-sm",
@@ -344,9 +366,6 @@ const ChatUI = () => {
                         )}
                       >
                         {message.content}
-                        {streamingMessageId === message.id && (
-                          <span className="inline-block w-2 h-4 ml-1 bg-black animate-pulse" />
-                        )}
                       </div>
 
                       {message.role === "assistant" && !message.isPricing && (
@@ -438,13 +457,39 @@ const ChatUI = () => {
           </div>
         </ScrollArea>
 
-        {/* Credits Counter */}
-        <div className="bg-white p-2">
-          <div className="max-w-3xl mx-auto flex justify-end items-center gap-2">
-            <Coins className="h-4 w-4 text-black" />
-            <span className="text-sm text-black">
-              {credits} credits remaining
-            </span>
+        {/* Credits Counter and File Preview */}
+        <div className="bg-white p-1">
+          <div className="max-w-3xl mx-auto flex justify-between items-center">
+            <div className="flex flex-wrap gap-2">
+              {selectedFiles.length > 0 &&
+                selectedFiles.map((file) => (
+                  <div
+                    key={file.name}
+                    className="md:ml-[34px] flex items-center gap-2 bg-black/5 rounded p-1.5"
+                  >
+                    <File className="h-3 w-3 text-black" />
+                    <span className="text-xs text-black">{file.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 hover:bg-black/5"
+                      onClick={() =>
+                        setSelectedFiles((files) =>
+                          files.filter((f) => f.name !== file.name)
+                        )
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Coins className="h-4 w-4 text-black" />
+              <span className="text-sm text-black">
+                {credits} credits remaining
+              </span>
+            </div>
           </div>
         </div>
 
@@ -458,23 +503,52 @@ const ChatUI = () => {
             className="max-w-3xl mx-auto"
           >
             <div className="flex gap-2 items-end">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                className="hidden"
+                multiple
+                accept="*/*"
+              />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Upload files</p>
+                </TooltipContent>
+              </Tooltip>
+
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message AI Assistant..."
+                placeholder="Start typing and hit Enter"
                 className="resize-none bg-white border-black/10 focus:border-black text-black placeholder:text-black/50 text-sm min-h-[44px] py-3 px-4"
                 rows={1}
+                disabled={isStreaming}
               />
-
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     type="submit"
                     className="bg-black text-white hover:bg-black/90 h-11 w-11 flex-shrink-0"
                     size="icon"
-                    disabled={!input.trim() || credits <= 0}
+                    disabled={
+                      (!input.trim() && selectedFiles.length === 0) ||
+                      credits < 0 ||
+                      isStreaming
+                    }
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -484,7 +558,7 @@ const ChatUI = () => {
                     {credits <= 0
                       ? "No credits remaining"
                       : isStreaming
-                      ? "Stop generating"
+                      ? "Generation in progress"
                       : "Send message"}
                   </p>
                 </TooltipContent>

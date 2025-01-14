@@ -16,26 +16,27 @@ interface QuestionItem {
 const QuickStartCards: React.FC<QuickStartCardsProps> = ({
   onQuestionSelect,
 }) => {
-  const questions: QuestionItem[] = [
+  const questions = [
     {
       icon: <MessageCircle className="w-5 h-5" />,
-      text: "Ask for dating advice",
-      question: "Can you give me some dating advice?",
+      text: "Get personalized advice",
+      question:
+        "I'd like some personalized advice about a situation I'm facing.",
     },
     {
       icon: <FileText className="w-5 h-5" />,
-      text: "Get tips for writing a great profile",
-      question: "What are some tips for writing an attractive dating profile?",
+      text: "Help with writing and communication",
+      question: "Can you help me improve my writing and communication skills?",
     },
     {
       icon: <Shirt className="w-5 h-5" />,
-      text: "Outfit suggestions for a date",
-      question: "What should I wear on a first date?",
+      text: "Professional presentation tips",
+      question: "What are some tips for presenting myself professionally?",
     },
     {
       icon: <Mail className="w-5 h-5" />,
-      text: "Help crafting messages to matches",
-      question: "Can you help me write an engaging first message to my match?",
+      text: "Draft important messages",
+      question: "Can you help me write an important message or email?",
     },
   ];
 
