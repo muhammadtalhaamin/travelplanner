@@ -9,6 +9,49 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: "none",
+            pre: {
+              color: "inherit",
+              backgroundColor: "transparent",
+            },
+            code: {
+              backgroundColor: "transparent",
+              padding: "0.2em 0.4em",
+              borderRadius: "3px",
+              fontWeight: "400",
+              color: "inherit",
+            },
+            "code::before": {
+              content: "none",
+            },
+            "code::after": {
+              content: "none",
+            },
+            a: {
+              color: "inherit",
+              textDecoration: "underline",
+            },
+            strong: {
+              color: "inherit",
+            },
+            h1: {
+              color: "inherit",
+            },
+            h2: {
+              color: "inherit",
+            },
+            h3: {
+              color: "inherit",
+            },
+            h4: {
+              color: "inherit",
+            },
+          },
+        },
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -58,6 +101,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 };
+
 export default config;

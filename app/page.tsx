@@ -32,6 +32,9 @@ import {
 import { cn } from "@/lib/utils";
 import QuickStartCards from "@/components/QuickStartCards";
 import PricingCards from "@/components/PricingCards";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Highlight, themes } from "prism-react-renderer";
 
 interface MessageFeedback {
   liked: boolean;
@@ -370,61 +373,119 @@ const ChatUI = () => {
                     <PricingCards />
                   ) : (
                     <div className="flex flex-col space-y-2">
-                      {messages.length <= 2 && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium">
-                            {message.role === "assistant"
-                              ? "AI Assistant"
-                              : "You"}
-                          </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          {message.role === "assistant"
+                            ? "AI Assistant"
+                            : "You"}
+                        </span>
 
-                          {message.files && message.files.length > 0 && (
-                            <div className="flex flex-1 justify-center flex-wrap gap-2">
-                              {message.files.map((file) => (
-                                <div
-                                  key={file.name}
-                                  className="flex items-center gap-2 font bg-white rounded-lg p-1 border-white border-2"
-                                >
-                                  <File className="h-3 w-3 text-black" />
-                                  <span className="text-xs text-black">
-                                    {file.name}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                        {message.files && message.files.length > 0 && (
+                          <div className="flex flex-1 justify-center flex-wrap gap-2">
+                            {message.files.map((file) => (
+                              <div
+                                key={file.name}
+                                className="flex items-center gap-2 font bg-white rounded-lg p-1 border-white border-2"
+                              >
+                                <File className="h-3 w-3 text-black" />
+                                <span className="text-xs text-black">
+                                  {file.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                          {message.role === "user" && !message.isPricing && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 hover:bg-white/10 text-white hover:text-white"
-                                  onClick={() =>
-                                    handleEditMessage(message.content)
-                                  }
-                                >
-                                  <PencilIcon className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Edit message</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      )}
-                      <div
+                        {message.role === "user" && !message.isPricing && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 hover:bg-white/10 text-white hover:text-white"
+                                onClick={() =>
+                                  handleEditMessage(message.content)
+                                }
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Edit message</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
                         className={cn(
-                          "prose max-w-none text-sm",
+                          "prose prose-sm max-w-none break-words",
                           message.role === "assistant"
                             ? "text-black"
                             : "text-white"
                         )}
+                        components={{
+                          code({
+                            node,
+                            inline,
+                            className,
+                            children,
+                            ...props
+                          }) {
+                            const match = /language-(\w+)/.exec(
+                              className || ""
+                            );
+                            const language = match ? match[1] : "text";
+                            return !inline && match ? (
+                              <Highlight
+                                theme={
+                                  message.role === "assistant"
+                                    ? themes.github
+                                    : themes.dracula
+                                }
+                                code={String(children).replace(/\n$/, "")}
+                                language={language}
+                              >
+                                {({
+                                  className,
+                                  style,
+                                  tokens,
+                                  getLineProps,
+                                  getTokenProps,
+                                }) => (
+                                  <pre
+                                    className={className}
+                                    style={{
+                                      ...style,
+                                      backgroundColor: "transparent",
+                                      padding: "1rem",
+                                      margin: "0.5rem 0",
+                                      borderRadius: "0.375rem",
+                                    }}
+                                  >
+                                    {tokens.map((line, i) => (
+                                      <div key={i} {...getLineProps({ line })}>
+                                        {line.map((token, key) => (
+                                          <span
+                                            key={key}
+                                            {...getTokenProps({ token })}
+                                          />
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </pre>
+                                )}
+                              </Highlight>
+                            ) : (
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            );
+                          },
+                        }}
                       >
                         {message.content}
-                      </div>
+                      </ReactMarkdown>
 
                       {message.role === "assistant" && !message.isPricing && (
                         <div className="flex items-center gap-2 mt-2">

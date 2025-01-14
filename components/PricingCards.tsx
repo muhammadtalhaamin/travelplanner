@@ -35,10 +35,10 @@ const PricingCards = () => {
     <div className="w-full">
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-black mb-2">
-          Continue Your Dating Journey
+          Continue your Brainstorm
         </h2>
         <p className="text-black/60">
-          Choose a plan to keep getting expert dating advice
+          Choose a plan to keep your conversations going
         </p>
       </div>
 
