@@ -10,7 +10,7 @@ const plans = [
     price: "$4.99",
     credits: "50",
     features: [
-      "50 AI conversations",
+      "100 Credits per session",
       "Profile review",
       "Quick responses",
       "24/7 availability",
@@ -21,11 +21,11 @@ const plans = [
     price: "$9.99",
     credits: "120",
     features: [
-      "120 AI conversations",
+      "300 Credits per session",
       "Priority support",
       "Advanced assistance",
       "Detailed explanations",
-      "Enhanced file analysis",
+      "Multiple file analysis",
     ],
   },
 ];
