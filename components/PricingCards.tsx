@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check } from "lucide-react";
+import { toast } from "sonner";
 
 const plans = [
   {
@@ -67,7 +68,9 @@ const PricingCards = () => {
             </ul>
             <Button
               className="w-full bg-black text-white hover:bg-black/90"
-              onClick={() => window.open("/checkout", "_blank")}
+              onClick={() => {
+                toast.info("Redirecting to checkout page");
+              }}
             >
               Get Started
             </Button>
