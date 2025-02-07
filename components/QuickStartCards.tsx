@@ -1,5 +1,5 @@
 import React from "react";
-import { MessageCircle, FileText, Shirt, Mail } from "lucide-react";
+import { Star, Moon, Sun, Calendar, Map } from "lucide-react";
 
 // Define the props interface
 interface QuickStartCardsProps {
@@ -18,25 +18,24 @@ const QuickStartCards: React.FC<QuickStartCardsProps> = ({
 }) => {
   const questions = [
     {
-      icon: <MessageCircle className="w-5 h-5" />,
-      text: "Get personalized advice",
-      question:
-        "I'd like some personalized advice about a situation I'm facing.",
+      icon: <Star className="w-5 h-5" />,
+      text: "Birth Chart Reading",
+      question: "I'd like to get my birth chart reading. My birth date is [please provide your birth date, time, and place].",
     },
     {
-      icon: <FileText className="w-5 h-5" />,
-      text: "Help with writing and communication",
-      question: "Can you help me improve my writing and communication skills?",
+      icon: <Moon className="w-5 h-5" />,
+      text: "Daily Horoscope",
+      question: "What's my horoscope for today? My zodiac sign is [please specify your sign].",
     },
     {
-      icon: <Shirt className="w-5 h-5" />,
-      text: "Professional presentation tips",
-      question: "What are some tips for presenting myself professionally?",
+      icon: <Sun className="w-5 h-5" />,
+      text: "Numerology Reading",
+      question: "Can you provide a numerology reading based on my birth date [please provide your birth date]?",
     },
     {
-      icon: <Mail className="w-5 h-5" />,
-      text: "Draft important messages",
-      question: "Can you help me write an important message or email?",
+      icon: <Calendar className="w-5 h-5" />,
+      text: "Upcoming Transits",
+      question: "What are the significant astrological transits coming up for my sign [please specify your sign]?",
     },
   ];
 
