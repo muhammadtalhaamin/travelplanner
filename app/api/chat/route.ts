@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import { ChatOpenAI } from "@langchain/openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { CSVLoader } from "@langchain/community/document_loaders/fs/csv";
-import { HumanMessage, AIMessage } from "@langchain/core/messages";
-import { BufferMemory } from "langchain/memory";
-import { ConversationChain } from "langchain/chains";
-import { ChatMessageHistory } from "@langchain/community/stores/message/in_memory";
 
-const chatSessions = new Map<string, ChatMessageHistory>();
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
 
 // Travel-related keywords to validate queries
 const TRAVEL_KEYWORDS = [
@@ -63,13 +61,6 @@ When responding to travel queries, follow these strict formatting rules:
 4. End with:
    ## Next Steps
    *Would you like me to adjust any part of this itinerary?*
-
-Remember:
-- Use proper Markdown formatting
-- Include specific costs and times
-- Maintain consistent indentation
-- Use bullet points for lists
-- Include code blocks for structured information
 `;
 
 // Function to validate if the query is travel-related
@@ -82,7 +73,6 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const message = formData.get("message") as string;
-    const sessionId = formData.get("sessionId") as string;
     const files = formData.getAll("files") as File[];
 
     // Validate if the query is travel-related
@@ -100,17 +90,6 @@ export async function POST(req: Request) {
         }
       );
     }
-
-    if (!chatSessions.has(sessionId)) {
-      chatSessions.set(sessionId, new ChatMessageHistory());
-    }
-    const chatHistory = chatSessions.get(sessionId)!;
-
-    const memory = new BufferMemory({
-      chatHistory: chatHistory,
-      returnMessages: true,
-      memoryKey: "history",
-    });
 
     // Process files and extract content
     let fileContents = "";
@@ -151,51 +130,39 @@ export async function POST(req: Request) {
       }
     }
 
-    const fullMessage = `${TripPlanner_PROMPT}\n\nUser Question: ${message}\n\n${fileContents}`;
-
-    const model = new ChatOpenAI({
-      modelName: "gpt-4",
-      streaming: true,
+    const response = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 4096,
       temperature: 0.7,
+      stream: true,
+      system: TripPlanner_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: `${message}\n\n${fileContents}`,
+        },
+      ],
     });
 
-    const chain = new ConversationChain({
-      llm: model,
-      memory: memory,
-    });
-
-    const readableStream = new ReadableStream({
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
       async start(controller) {
         try {
-          const response = await chain.call(
-            { input: fullMessage },
-            {
-              callbacks: [
-                {
-                  handleLLMNewToken(token: string) {
-                    const data = JSON.stringify({ content: token });
-                    controller.enqueue(`data: ${data}\n\n`);
-                  },
-                },
-              ],
+          for await (const chunk of response) {
+            if (chunk.type === 'content_block_delta' && 'text' in chunk.delta) {
+              const data = JSON.stringify({ content: chunk.delta.text });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }
-          );
-
-          await chatHistory.addMessage(new HumanMessage(fullMessage));
-          await chatHistory.addMessage(new AIMessage(response.response));
-
-          controller.enqueue(
-            `data: ${JSON.stringify({ content: "[DONE]" })}\n\n`
-          );
+          }
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: "[DONE]" })}\n\n`));
           controller.close();
         } catch (error) {
-          console.error("Streaming error:", error);
           controller.error(error);
         }
       },
     });
 
-    return new Response(readableStream, {
+    return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
